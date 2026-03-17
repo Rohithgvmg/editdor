@@ -23,8 +23,6 @@ import * as fileTdService from "../../services/fileTdService";
 import { checkIfLinkIsInItem } from "../../utils/tdOperations";
 import DialogTemplate from "./DialogTemplate";
 import BaseButton from "../../components/TDViewer/base/BaseButton";
-import { link } from "fs";
-import Dropdown from "../../components/base/Dropdown";
 
 export interface AddLinkTdDialogRef {
   openModal: () => void;
@@ -250,7 +248,7 @@ const AddLinkTdDialog = forwardRef<AddLinkTdDialogRef, AddLinkTdDialogProps>(
               htmlFor="type"
               className="pl-2 text-sm font-medium text-gray-400"
             >
-              Type:(select one of the proposed types or tape your custom type)
+              Type:(select one of the proposed types or type your custom type)
             </label>
             <input
               list="mediaType"

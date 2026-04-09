@@ -23,6 +23,7 @@ import * as fileTdService from "../../services/fileTdService";
 import { checkIfLinkIsInItem } from "../../utils/tdOperations";
 import DialogTemplate from "./DialogTemplate";
 import BaseButton from "../../components/TDViewer/base/BaseButton";
+import DatalistInput from "../../components/base/DatalistInput";
 
 export interface AddLinkTdDialogRef {
   openModal: () => void;
@@ -48,12 +49,8 @@ const AddLinkTdDialog = forwardRef<AddLinkTdDialogRef, AddLinkTdDialogProps>(
       type: "",
     });
     const [errorMessage, setErrorMessage] = useState<string>("");
-    const [display, setDisplay] = React.useState<boolean>(() => {
-      return false;
-    });
-    const [linkingMethod, setlinkingMethod] = React.useState<string>(() => {
-      return "url";
-    });
+    const [display, setDisplay] = useState<boolean>(false);
+    const [linkingMethod, setLinkingMethod] = useState<string>("url");
     const [currentLinkedTd, setCurrentLinkedTd] = React.useState<
       Record<string, any>
     >(() => {
@@ -97,7 +94,7 @@ const AddLinkTdDialog = forwardRef<AddLinkTdDialogRef, AddLinkTdDialogProps>(
     };
 
     const linkingMethodChange = (linkingOption: string): void => {
-      setlinkingMethod(linkingOption);
+      setLinkingMethod(linkingOption);
       if (currentLinkedTd && linkingOption === "url") {
         setCurrentLinkedTd({});
       }
@@ -122,25 +119,30 @@ const AddLinkTdDialog = forwardRef<AddLinkTdDialogRef, AddLinkTdDialogProps>(
       }
     }, []);
 
-    const RelationType = (): JSX.Element[] => {
-      const relations = [
-        "icon",
-        "service-doc",
-        "alternate",
-        "type",
-        "tm:extends",
-        "proxy-to",
-        "collection",
-        "item",
-        "predecessor-version",
-        "controlledBy",
-      ];
-      let index = 0;
-      const relationsHtml = relations.map((currentRelation) => {
-        index++;
-        return <option value={currentRelation} key={index} />;
+    const relations = [
+      "icon",
+      "service-doc",
+      "alternate",
+      "type",
+      "tm:extends",
+      "proxy-to",
+      "collection",
+      "item",
+      "predecessor-version",
+      "controlledBy",
+    ];
+
+    const handleRelationChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      setFormData({
+        ...formData,
+        rel: e.target.value,
       });
-      return relationsHtml;
+    };
+    const handleTypeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      setFormData({
+        ...formData,
+        type: e.target.value,
+      });
     };
 
     const children = (
@@ -149,35 +151,14 @@ const AddLinkTdDialog = forwardRef<AddLinkTdDialogRef, AddLinkTdDialogProps>(
           Thing Description:
         </label>
         <div className="p-1">{tdJSON["title"]}</div>
-        <div className="p-1 pt-2">
-          <label
-            htmlFor="rel"
-            className="pl-2 text-sm font-medium text-gray-400"
-          >
-            Relation:(select one of the proposed relations or type your custom
-            relation)
-          </label>
-          <input
-            list="relationType"
-            type="text"
-            name="rel"
-            id="rel"
-            className="w-full rounded-md border-2 border-gray-600 bg-gray-600 p-2 text-white focus:border-blue-500 focus:outline-none sm:text-sm"
-            placeholder="relation name"
-            value={formData.rel}
-            onChange={(e) =>
-              setFormData({
-                ...formData,
-                rel: e.target.value,
-              })
-            }
-          />
-          <datalist id="relationType">
-            <RelationType></RelationType>
-          </datalist>
-
-          <span id="link-rel-info" className="pl-2 text-xs text-red-400"></span>
-        </div>
+        <DatalistInput
+          id="relationType"
+          label="Relation:(select one of the proposed relations or type your custom relation)"
+          placeholder="relation name"
+          options={relations}
+          value={formData.rel || ""}
+          onChange={handleRelationChange}
+        ></DatalistInput>
         <div className="p-1 pt-2">
           <label
             htmlFor="link-href"
@@ -243,40 +224,24 @@ const AddLinkTdDialog = forwardRef<AddLinkTdDialogRef, AddLinkTdDialogProps>(
               {errorMessage}
             </span>
           )}
-          <div>
-            <label
-              htmlFor="type"
-              className="pl-2 text-sm font-medium text-gray-400"
-            >
-              Type:(select one of the proposed types or type your custom type)
-            </label>
-            <input
-              list="mediaType"
-              type="text"
-              name="type"
-              id="type"
-              className="w-full rounded-md border-2 border-gray-600 bg-gray-600 p-2 text-white focus:border-blue-500 focus:outline-none sm:text-sm"
-              placeholder="media type"
-              value={formData.type}
-              onChange={(e) =>
-                setFormData({
-                  ...formData,
-                  type: e.target.value,
-                })
-              }
-            />
-            <datalist id="mediaType">
-              <option value="application/td+json" />
-              <option value="image/jpeg" />
-              <option value="text/csv" />
-              <option value="video/mp4" />
-            </datalist>
-          </div>
+          <DatalistInput
+            id="mediaType"
+            label="Type:(select one of the proposed types or type your custom type)"
+            placeholder="media type"
+            options={[
+              "application/td+json",
+              "image/jpeg",
+              "text/csv",
+              "video/mp4",
+            ]}
+            value={formData.type || ""}
+            onChange={handleTypeChange}
+          ></DatalistInput>
         </div>
       </>
     );
 
-    const handleAddLink = () => {
+    const handleAddLink = async () => {
       if (!context.isValidJSON) {
         setErrorMessage("Can't add link. TD is malformed");
         return;
@@ -304,16 +269,15 @@ const AddLinkTdDialog = forwardRef<AddLinkTdDialogRef, AddLinkTdDialogProps>(
         (url.protocol === "http:" || url.protocol === "https:")
       ) {
         try {
-          var httpRequest = new XMLHttpRequest();
-          httpRequest.open("GET", link.href, false);
-          httpRequest.send();
-          if (
-            httpRequest
-              ?.getResponseHeader("content-type")
-              ?.includes("application/td+json")
-          ) {
-            const thingDescription = httpRequest.response;
-            let parsedTd = JSON.parse(thingDescription);
+          // var httpRequest = new XMLHttpRequest();
+          // httpRequest.open("GET", link.href, false);
+          // httpRequest.send();
+
+          const response = await fetch(link.href);
+          const contentType = response.headers.get("content-type");
+
+          if (contentType?.includes("application/td+json")) {
+            const parsedTd = await response.json();
             linkedTd[link.href] = parsedTd;
           }
         } catch (ex) {
@@ -335,6 +299,7 @@ const AddLinkTdDialog = forwardRef<AddLinkTdDialogRef, AddLinkTdDialogProps>(
         addLinksToTd(link);
         context.addLinkedTd(linkedTd);
         setCurrentLinkedTd({});
+        setFormData({ href: "", rel: "", type: "" });
         close();
       }
     };
